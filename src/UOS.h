@@ -6,13 +6,9 @@
 #if !defined(ARDUINO_ARCH_RP2040)
   #include <EEPROM.h>
 #endif
-// #include <EEPROM_R4T0.h>
-// #include <avr/wdt.h>
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
-// #include <U8g2lib.h>
-// #include <type_traits>
 #include "tinyexpr.h"
 
 /* ----------------------------
@@ -27,21 +23,14 @@
 #define MAX_LIST_ITEMS 5
 #define MAX_ITEM_LEN   8
 
-#define len_Data_Buffer 100
+#define len_Data_Buffer 250
+
+#define Starting_serial 9600
 
 extern int H1;
 extern bool Use_Serial_True;
 extern char Data_EEPROM[len_Data_Buffer];
 extern int TData;
-
-/* ----------------------------
-   Global Variables (Lists)
-   ---------------------------- */
-// ตอนนี้กิน SRAM เพียง 20×12 + 20×12 = 480 bytes เท่านั้น
-// extern char hsuorg[MAX_LIST_ITEMS][MAX_ITEM_LEN];
-// extern char sysItems[MAX_LIST_ITEMS][MAX_ITEM_LEN];
-// extern int list_count;
-// extern int list_count_2;
 
 /* ----------------------------
    My_print Class Declaration
@@ -256,8 +245,8 @@ struct Result {
     void W(String name, Result Text);
     Result R(String nane);
     Result R(String nane, uint32_t &rawLength);
-    uint32_t My_eerom::Search(String name);
-    uint32_t My_eerom::Search(String name, uint32_t &Len_name);
+    uint32_t Search(String name);
+    uint32_t Search(String name, uint32_t &Len_name);
 
     int H();
     uint16_t Data_extraction();

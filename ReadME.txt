@@ -67,3 +67,10 @@ UOS Library Notes
      * พิมพ์ ข้อความลงไปใน x
        6.4 "p.init()"
      * คืน true ถ้า Serial พร้อมใช้งาน
+
+7. input from Serial
+   * ใช้เพื่อรับข้อความจาก Serial
+        7.1 "input()"
+     * รับแค่ข้อความจาก Serial 
+      7.1 "input(x)"
+     * รับข้อความพร้อมแสดง x ลงไปใน ข้อความ(x เป็น char*)

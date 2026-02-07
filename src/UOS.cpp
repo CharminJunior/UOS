@@ -7,33 +7,10 @@ My_print p;
   My_eerom E;
 #endif
 
-// ประกาศ pointer ไว้ข้างนอกฟังก์ชัน เพื่อใช้ทั่วโปรแกรม
-// U8G2* u8g2 = nullptr;
-
-/* ----------------------------
-   Global Variables (Definitions)
-   ---------------------------- */
-// char hsuorg[MAX_LIST_ITEMS][MAX_ITEM_LEN];
-// char sysItems[MAX_LIST_ITEMS][MAX_ITEM_LEN];
-// int list_count = 0;
-// int list_count_2 = 0;
-
 int H1 = 0;
 bool Use_Serial_True = 0;
 char Data_EEPROM[len_Data_Buffer];
 int TData, Len_Data;
-
-/* ----------------------------
-   EEPROM Size Check for ESP
-   ---------------------------- */
-// #if defined(ESP8266) || defined(ESP32)
-//     // ESP ต้องมีขนาด EEPROM
-//     #ifndef EEPROM_SIZE_DEFINED
-//         #define CHECK_EEPROM_SIZE_MACRO
-//     #endif
-// #else
-//     // บอร์ดอื่น (เช่น AVR) ไม่ต้องใช้ size
-// #endif
 
 /* ----------------------------
    My_print Class Implementation
@@ -95,14 +72,6 @@ void outD(const uint8_t pin, const bool value) {
   pinMode(pin, OUTPUT);
   digitalWrite(pin, value ? HIGH : LOW);
 }
-
-// unsigned long gml() {
-//   return millis();
-// }
-
-// unsigned long gmc() {
-//   return micros();
-// }
 
 /* ----------------------------
    EEPROM Helpers Implementation
@@ -204,7 +173,9 @@ void outD(const uint8_t pin, const bool value) {
 
   void My_eerom::clear() {
     if(!Use_Serial_True) {
-      p.b(9600, true);
+      p.b(Starting_serial, true);
+    } else {
+      return;
     }
     if(GEUP_F() != 0) {
       int eepromSize = EEPROM.length(); // ขนาด EEPROM ของบอร์ด
@@ -447,7 +418,9 @@ void outD(const uint8_t pin, const bool value) {
 
   uint16_t My_eerom::Data_extraction() {
     if(!Use_Serial_True) {
-      p.b(9600, true);
+      p.b(Starting_serial, true);
+    } else {
+      return 0;
     }
     if(E.GEUP() == 0) { 
       p.text("No data in EEPROM\n");
@@ -501,6 +474,11 @@ void setPinMode(uint8_t pin, uint8_t mode) {
    ---------------------------- */
 // อ่านจนเจอ '\n' หรือจนบัฟเฟอร์เต็ม (เหลือ 1 byte 0-terminator)
 char* input(const char* prompt) {
+  if(!Use_Serial_True) {
+    p.b(Starting_serial, true);
+  } else {
+    return 0;
+  }
   // จองบัฟเฟอร์ภายในฟังก์ชัน (ปรับขนาดได้ตามต้องการ)
   static char buf[64];
   size_t idx = 0;
@@ -519,6 +497,11 @@ char* input(const char* prompt) {
 }
 
 char* input() {
+  if(!Use_Serial_True) {
+    p.b(Starting_serial, true);
+  } else {
+    return 0;
+  }
   // จองบัฟเฟอร์ภายในฟังก์ชัน (ปรับขนาดได้ตามต้องการ)
   static char buf[64];
   size_t idx = 0;
