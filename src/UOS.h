@@ -9,7 +9,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
-#include "tinyexpr.h"
 
 /* ----------------------------
    Definitions and Constants
@@ -211,7 +210,7 @@ struct Result {
 
   /* ================= Debug helper ================= */
 
-  const char* typeName() const {
+  const char* typeName_c() const {
     switch (type) {
       case INT:    return "INT";
       case LONG:   return "LONG";
@@ -220,6 +219,17 @@ struct Result {
     }
     return "UNKNOWN";
   }
+
+  uint8_t typeName_t() const {
+    switch (type) {
+      case INT:    return 1;
+      case LONG:   return 2;
+      case FLOAT:  return 3;
+      case STRING: return 4;
+    }
+    return 0;
+  }
+
 };
 
 #if !defined(ARDUINO_ARCH_RP2040)

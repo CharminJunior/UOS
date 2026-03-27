@@ -1,9 +1,9 @@
 // asm code in UOS
 
 Type :
-    C = Char(Text) อ่านจนเจอ 0x0A        ; 0x00
-    N = Number จะมีขนาด 2byte            ; 0x01
-    V = Var มีขนาด 1byte                 ; 0x02
+    C = Char(Text) อ่านจนเจอ 0x0A            ; 0x00
+    N = Number จะมีขนาด 2byte                ; 0x01
+    V = Var มีขนาด 1byte                     ; 0x02
 
 Type IF(<=>)(TF) :
     ==  ; 0x00
@@ -18,7 +18,7 @@ Type IF(<=>)(TF) :
 คำสั่ง
 NOP                                         ; 0x00
 PRINT T[V, N, C] [V, N, C]                  ; 0x01
-LET [V] [N]                               ; 0x02
+LET [V] [N]                                 ; 0x02
 GOTO [B]                                    ; 0x03
 DELAY T[V, N] [V, N]                        ; 0x04
 ADD T[V] [V] T[V, N] [V, N]                 ; 0x05 +

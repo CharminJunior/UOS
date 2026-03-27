@@ -31,7 +31,7 @@ void My_print::b(long baud) {
   Serial.begin(baud);
   unsigned long start = millis();
   while (!Serial) {
-    if (millis() - start >= 200) { break; }
+    if (millis() - start >= 200) { return; }
   }
   Use_Serial_True = 1;
 }
@@ -41,7 +41,7 @@ void My_print::b(long baud, bool Serial_bit) {
   unsigned long start = millis();
   if(Serial_bit) {
     while (!Serial) {
-      if (millis() - start >= 200) { break; }
+      if (millis() - start >= 200) { return; }
     }
   }
   Use_Serial_True = 1;
@@ -174,8 +174,6 @@ void outD(const uint8_t pin, const bool value) {
   void My_eerom::clear() {
     if(!Use_Serial_True) {
       p.b(Starting_serial, true);
-    } else {
-      return;
     }
     if(GEUP_F() != 0) {
       int eepromSize = EEPROM.length(); // ขนาด EEPROM ของบอร์ด
@@ -419,8 +417,6 @@ void outD(const uint8_t pin, const bool value) {
   uint16_t My_eerom::Data_extraction() {
     if(!Use_Serial_True) {
       p.b(Starting_serial, true);
-    } else {
-      return 0;
     }
     if(E.GEUP() == 0) { 
       p.text("No data in EEPROM\n");
@@ -476,8 +472,6 @@ void setPinMode(uint8_t pin, uint8_t mode) {
 char* input(const char* prompt) {
   if(!Use_Serial_True) {
     p.b(Starting_serial, true);
-  } else {
-    return 0;
   }
   // จองบัฟเฟอร์ภายในฟังก์ชัน (ปรับขนาดได้ตามต้องการ)
   static char buf[64];
@@ -499,8 +493,6 @@ char* input(const char* prompt) {
 char* input() {
   if(!Use_Serial_True) {
     p.b(Starting_serial, true);
-  } else {
-    return 0;
   }
   // จองบัฟเฟอร์ภายในฟังก์ชัน (ปรับขนาดได้ตามต้องการ)
   static char buf[64];
