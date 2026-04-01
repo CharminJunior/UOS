@@ -9,6 +9,7 @@ My_print p;
 
 int H1 = 0;
 bool Use_Serial_True = 0;
+bool RandomSeeded_True = 0;
 char Data_EEPROM[len_Data_Buffer];
 int TData, Len_Data;
 
@@ -34,6 +35,10 @@ void My_print::b(long baud) {
     if (millis() - start >= 200) { return; }
   }
   Use_Serial_True = 1;
+  if(RandomSeeded_True == 0) {
+    randomSeed(analogRead(A0)); // ใช้ค่าอะนาล็อกสุ่มเพื่อความหลากหลาย
+    RandomSeeded_True = 1;
+  }
 }
 
 void My_print::b(long baud, bool Serial_bit) {
@@ -45,6 +50,10 @@ void My_print::b(long baud, bool Serial_bit) {
     }
   }
   Use_Serial_True = 1;
+  if(RandomSeeded_True == 0) {
+    randomSeed(analogRead(A0)); // ใช้ค่าอะนาล็อกสุ่มเพื่อความหลากหลาย
+    RandomSeeded_True = 1;
+  }
 }
 
 /* ----------------------------
@@ -87,17 +96,17 @@ void outD(const uint8_t pin, const bool value) {
     return true;
   }
 
-  bool isNumber(String str) {
-    if (str.length() == 0) return false;
+  bool isNumber(char* str) {
+    if (strlen(str) == 0) return false;
 
     int start = 0;
     if (str[0] == '-' || str[0] == '+') { // มีเครื่องหมายบวก/ลบ
-      if (str.length() == 1) return false; // มีแค่เครื่องหมาย ไม่มีเลข
+      if (strlen(str) == 1) return false; // มีแค่เครื่องหมาย ไม่มีเลข
       start = 1;
     }
 
     bool hasDecimal = false;
-    for (int i = start; i < str.length(); i++) {
+    for (int i = start; i < strlen(str); i++) {
       if (str[i] == '.') {
         if (hasDecimal) return false; // เจอจุดทศนิยมซ้ำ
         hasDecimal = true;
@@ -109,22 +118,29 @@ void outD(const uint8_t pin, const bool value) {
     return true;
   }
 
-  int findValidPosition(String Compilation) {
-    //int T3 = -1; // ตำแหน่งที่จะเขียน
-    int maxPos = EEPROM.length() - Compilation.length();
-    int trialCount = 0;  // ป้องกันวนไม่จบ (กรณีไม่มีตำแหน่งว่าง)
+  int findValidPosition(const char* Compilation) {
+    if(RandomSeeded_True == 0) {
+      randomSeed(analogRead(A0)); // ใช้ค่าอะนาล็อกสุ่มเพื่อความหลากหลาย
+      RandomSeeded_True = 1;
+    }
+    // ใช้ strlen() แทน .length() เพราะ Compilation เป็น char*
+    int compLen = strlen(Compilation);
+    int maxPos = EEPROM.length() - compLen;
+    
+    if (maxPos < 0) return -1; // ป้องกันกรณีข้อความยาวกว่า EEPROM
+
+    int trialCount = 0;  
     const int maxTrials = 100; 
 
     while (trialCount < maxTrials) {
-      int pos = random(0, maxPos + 1); // +1 เพราะช่วงบน exclusive
-      if (isValidPosition(pos, Compilation.length())) {
-        //T3 = pos;
+      int pos = random(0, maxPos + 1); 
+      // ส่งความยาวที่คำนวณได้จาก strlen ไปให้ isValidPosition
+      if (isValidPosition(pos, compLen)) {
         return pos;
       }
       trialCount++;
     }
 
-    // ถ้าหมดรอบแล้วยังหาไม่ได้คืน false
     return -1;
   }
 
@@ -145,61 +161,66 @@ void outD(const uint8_t pin, const bool value) {
   #endif
 
   int My_eerom::GEUP() {
-    int count = 0;
-    int size = EEPROM.length();
+    uint32_t count = 0;
 
-    for (int i = 0; i < size; i++) {
-      byte val = EEPROM.read(i);
-      if (val != 0xFF) {
+    for (uint32_t i = 0; i < EEPROM.length(); i++) {
+      if (EEPROM.read(i) != 0xFF) {
         count++;
       }
     }
     return count; // คืนจำนวนไบต์ที่มีข้อมูลจริง
   }
 
-  float My_eerom::GEUP_F() {
-    int validCount = 0;
-    int size = EEPROM.length();
+  uint8_t My_eerom::GEUP_T() {
+    uint32_t count = 0;
 
-    for (int i = 0; i < size; i++) {
+    for (uint32_t i = 0; i < EEPROM.length(); i++) {
+      if (EEPROM.read(i) != 0xFF) {
+        count++;
+      }
+    }
+    return (uint8_t)((count * 100) / EEPROM.length()); // 0-100 แบบ int ของข้อมูลจริง
+  }
+
+  float My_eerom::GEUP_F() {
+    uint32_t validCount = 0;
+
+    for (uint32_t i = 0; i < EEPROM.length(); i++) {
       if (EEPROM.read(i) != 0xFF) {
         validCount++;
       }
     }
 
-    float percent = (validCount * 100.0) / size;
-    return percent; // เปอร์เซ็นต์ข้อมูลจริง
+    return (validCount * 100.0) / EEPROM.length(); // เปอร์เซ็นต์ข้อมูลจริง
   }
 
   void My_eerom::clear() {
     if(!Use_Serial_True) {
       p.b(Starting_serial, true);
     }
-    if(GEUP_F() != 0) {
-      int eepromSize = EEPROM.length(); // ขนาด EEPROM ของบอร์ด
+    if(GEUP() != 0) {
+      uint32_t eepromSize = EEPROM.length(); // ขนาด EEPROM ของบอร์ด
 
       p.text("Size EEPROM = ",eepromSize,"\n");
       p.text("Perform cleaning...\n");
 
-      int n1 = 0;
+      uint32_t n1 = 0;
 
-      for (int i = 0; i < eepromSize; i++) {
-        EEPROM.write(i, 0xFF);  // หรือจะเขียน 0 ก็ได้
-        //n1 = (i*100)/eepromSize;
-        //lod(i,eepromSize);
+      for (uint32_t i = 0; i < eepromSize; i++) {
+        if(EEPROM.read(i) != 0xFF) {
+          EEPROM.write(i, 0xFF);  // หรือจะเขียน 0 ก็ได้
+        }
       }
-      // EEPROM.commit();
       #if defined(ESP8266) || defined(ESP32)
         EEPROM.commit();  // จำเป็นบน ESP
       #endif
 
-      p.text("EEPROM is clear!\n");
-    } else {
-      p.text("EEPROM is clear!\n");
+      
     }
+    p.text("EEPROM is clear!\n", " - Total ", GEUP(), " bytes of data\n");
   }
 
-  void My_eerom::D(String name) {
+  void My_eerom::D(char* name) {
     uint32_t X1;
     R(name, X1);
 
@@ -208,206 +229,303 @@ void outD(const uint8_t pin, const bool value) {
       for(int i=0; i <= X1; i++) {
         EEPROM.write(i+X2, 0xFF);  // หรือจะเขียน 0 ก็ได้
       }
-      // EEPROM.commit();
       #if defined(ESP8266) || defined(ESP32)
       EEPROM.commit();  // จำเป็นบน ESP
       #endif
     }
   }
 
-  void My_eerom::W(String name, Result Text) {
-    if(R(name) != Text) {
-      D(name);
-      
-      String in2;
-      String Compilation;
-      int T1, T2;
-      String in;
+  void My_eerom::W(char* name, Result Text) {
+      if(R(name) != Text) {
+        D(name);
+        
+        char typeChar;
+        if (Text.isint())      typeChar = '#';
+        else if (Text.islong())  typeChar = '@';
+        else if (Text.isfloat()) typeChar = '$';
+        else if (Text.isstr())   typeChar = '%';
+        else return;
 
-      if (Text.isint()) {
-        in2 = "#" + name;  // เป็นตัวเลข int
-      } else if (Text.islong()) {
-        in2 = "@" + name;  // เป็นตัวเลข long
-      } else if (Text.isfloat()) {
-        in2 = "$" + name;  // เป็นตัวเลข float
-      } else if (Text.isstr()) {
-        in2 = "%" + name;  // เป็นข้อความ string
-      } else {
-        // ไม่รู้จักชนิดข้อมูล
-        // p.text("Error: Unknown data type\n");
-        return;
+        // สร้าง String สำหรับเก็บค่าที่จะเขียนลง EEPROM
+        // รูปแบบ: #name&value&
+        String in = Text.toString(); 
+        char compilation[64]; // ปรับขนาดตามความเหมาะสม
+        snprintf(compilation, sizeof(compilation), "%c%s&%s&", typeChar, name, in.c_str());
+
+        int T1 = findValidPosition(compilation); // ต้องไปแก้ findValidPosition ให้รับ char* ด้วย
+        if (T1 != -1) {
+            // p.text("Writing to EEPROM at position ", T1, ": ", String(compilation), '\n');
+            for (int i = 0; i < strlen(compilation); i++) {
+              EEPROM.write(T1 + 1 + i, compilation[i]);
+            }
+            #if defined(ESP8266) || defined(ESP32)
+              EEPROM.commit();
+            #endif
+        }
       }
-
-      in = Text.toString();
-      Compilation = in2 + "&" + in + "&";
-
-      // p.text("Compilation : ",Compilation,"\n");
-
-      //T1 = random(0, EEPROM.length() - Compilation.length());
-      //T1 = 1; // EEPROM.length() - Compilation.length();
-      T1 = findValidPosition(Compilation);
-      T2 = 1;
-
-      // วนตามความยาว Compilation
-      for (int i = 0; i < Compilation.length(); i++) {
-        EEPROM.write(T1 + T2, Compilation.charAt(T2 - 1));
-        T2++;
-      }
-      #if defined(ESP8266) || defined(ESP32)
-        EEPROM.commit();  // จำเป็นบน ESP
-      #endif
-    }
   }
 
-  Result My_eerom::R(String nane) {
+  Result My_eerom::R(char* nane) {
     long addr = 0;
-    String Lite = "";
+    int eepromSize = EEPROM.length();
     Result Vode;
 
-    // วนหา '@', '#', '$', '%' ก่อน
-    while (addr < EEPROM.length()) {
+    while (addr < eepromSize) {
+      // 1. หา '@', '#', '$', '%'
       char ch = (char)EEPROM.read(addr);
       if (ch != '#' && ch != '@' && ch != '$' && ch != '%') {
         addr++;
         continue;
       }
 
-      H1 = addr;
-      addr++; // ข้ามตัวอักษรชนิดข้อมูล
+      H1 = addr; // เก็บตำแหน่งที่เจอ
+      addr++;    // ข้ามตัวอักษรชนิดข้อมูล
 
-      // อ่านชื่อจนเจอ '&'1
-      Lite = "";
-      while (addr < EEPROM.length()) {
+      // 2. เปรียบเทียบชื่อ "ทีละตัวอักษร" โดยไม่ต้องสร้าง String หรือ Buffer ใดๆ
+      bool nameMatch = true;
+      int nameIdx = 0;
+      
+      while (addr < eepromSize) {
         char c = (char)EEPROM.read(addr);
-        if (c == '&') {
-          addr++;
-          break;
-        }
-        Lite += c;
         addr++;
+        
+        if (c == '&') {
+          // ถ้า EEPROM เจอ '&' แล้ว แต่คำค้นหา (nane) ยังไม่จบ (\0) แปลว่าชื่อไม่ตรง
+          if (nane[nameIdx] != '\0') {
+            nameMatch = false; 
+          }
+          break; // จบการอ่านชื่อ
+        }
+        
+        // ถ้าตัวอักษรไม่ตรงกัน ก็จำไว้ว่าไม่ตรง (แต่ยังต้องวนอ่านให้จบถึง '&')
+        if (nane[nameIdx] != c) {
+          nameMatch = false;
+        }
+        nameIdx++;
       }
 
-      // ชื่อไม่ตรง → ข้ามค่าข้อมูล
-      if (Lite != nane) {
-        while (addr < EEPROM.length()) {
+      // 3. ถ้าชื่อไม่ตรง → วนข้ามค่าข้อมูลชุดนี้ไปเลย
+      if (!nameMatch) {
+        while (addr < eepromSize) {
           if ((char)EEPROM.read(addr) == '&') {
             addr++;
             break;
           }
           addr++;
         }
-        continue;
+        continue; // กลับไปเริ่มเช็ค Address ถัดไป
       }
 
-      // ตัวแปร → อ่านค่าข้อมูลจนเจอ '&'2
-      String data = "";
-      while (addr < EEPROM.length()) {
+      // 4. ถ้าชื่อตรง! → ดึงข้อมูลมาใส่ Buffer ธรรมดา (หลีกเลี่ยงการบวก String)
+      // จองพื้นที่ 32 bytes (เก็บเลข หรือข้อความสั้นๆ ได้สบายๆ)
+      char dataBuf[32]; 
+      int dIdx = 0;
+      
+      while (addr < eepromSize) {
         char c = (char)EEPROM.read(addr);
-        if (c == '&') {
-          addr++;
-          break;
-        }
-        data += c;
         addr++;
+        if (c == '&') break;
+        
+        if (dIdx < (int)sizeof(dataBuf) - 1) {
+          dataBuf[dIdx++] = c;
+        }
       }
+      dataBuf[dIdx] = '\0'; // ปิดท้ายข้อความให้สมบูรณ์
 
-      // Vode = data; // เก็บชื่อ (ถ้าต้องการ)
-
-      // แปลงค่าและเก็บใน Result
+      // 5. แปลงค่าด้วยคำสั่งมาตรฐานของ C (รวดเร็วและไม่กิน Heap RAM)
       if (ch == '@') {           // long
         Vode.type = Result::LONG;
-        Vode.lVal = data.toInt();
+        Vode.lVal = atol(dataBuf);
       } else if (ch == '#') {    // int
         Vode.type = Result::INT;
-        Vode.iVal = data.toInt();
+        Vode.iVal = atoi(dataBuf);
       } else if (ch == '$') {    // float
         Vode.type = Result::FLOAT;
-        Vode.fVal = data.toFloat();
+        Vode.fVal = atof(dataBuf);
       } else if (ch == '%') {    // string
         Vode.type = Result::STRING;
-        Vode.sVal = data;
+        Vode.sVal = dataBuf;     // <--- จังหวะนี้จะมีการแปลงเป็น String แค่ครั้งเดียว เพื่อใส่ใน struct
       }
 
-      return Vode; // คืนค่าข้อมูล
+      return Vode;
     }
 
-    // ไม่เจอ → คืนค่า Result แบบ type = STRING และ sVal = "-1"
+    // ไม่เจอข้อมูล คืนค่า Default
+    H1 = -1;
     Result empty;
     empty.type = Result::STRING;
     empty.sVal = "-1";
-    H1 = -1;
     return empty;
   }
 
-  Result My_eerom::R(String nane, uint32_t &rawLength) {
-    long addr = 0;
-    String Lite = "";
-    Result Vode;
-    rawLength = 0;
+  Result My_eerom::R(char* nane, int &rawLength) {
+      long addr = 0;
+      char tempName[32]; // บัฟเฟอร์สำหรับพักชื่อที่อ่านจาก EEPROM (ปรับขนาดได้ตามใจชอบ)
+      Result Vode;
+      rawLength = 0;
 
-    while (addr < EEPROM.length()) {
-      // หา '@', '#', '$', '%' ก่อน
-      char ch = (char)EEPROM.read(addr);
-      if (ch != '#' && ch != '@' && ch != '$' && ch != '%') {
-        addr++;
-        continue;
-      }
-      long startAddr = addr;  // เก็บตำแหน่งเริ่มต้นของข้อมูลดิบ
-      H1 = addr;
-      addr++; // ข้าม '@', '#', '$', '%'
+      int eepromSize = EEPROM.length();
 
-      // อ่านชื่อ (จนเจอ '&')
-      Lite = "";
-      while (addr < EEPROM.length()) {
-        char c = (char)EEPROM.read(addr);
-        if (c == '&') { addr++; break; }
-        Lite += c;
-        addr++;
-      }
+      while (addr < eepromSize) {
+        // 1. หาตัวบ่งชี้ชนิดข้อมูล '@', '#', '$', '%'
+        char ch = (char)EEPROM.read(addr);
+        if (ch != '#' && ch != '@' && ch != '$' && ch != '%') {
+          addr++;
+          continue;
+        }
+        
+        long startAddr = addr;  
+        H1 = addr; // เก็บตำแหน่ง Address ที่พบ
+        addr++; 
 
-      // ถ้าไม่ตรงชื่อ ให้ข้ามข้อมูล (ค่าข้อมูล) ไปจนเจอ '&' ตัวที่สอง
-      if (Lite != nane) {
-        while (addr < EEPROM.length()) {
-          if ((char)EEPROM.read(addr) == '&') { addr++; break; }
+        // 2. อ่านชื่อจาก EEPROM มาเก็บใน tempName จนเจอ '&'
+        int idx = 0;
+        while (addr < eepromSize) {
+          char c = (char)EEPROM.read(addr);
+          if (c == '&') { 
+            addr++; 
+            break; 
+          }
+          if (idx < sizeof(tempName) - 1) {
+            tempName[idx++] = c;
+          }
           addr++;
         }
-        continue; // อ่านชุดถัดไป
+        tempName[idx] = '\0'; // ปิดท้าย string
+
+        // 3. เปรียบเทียบชื่อด้วย strcmp
+        if (strcmp(tempName, nane) != 0) {
+          // ถ้าชื่อไม่ตรง ให้ข้าม (Skip) ค่าข้อมูลไปจนเจอ '&' ตัวที่สอง
+          while (addr < eepromSize) {
+            if ((char)EEPROM.read(addr) == '&') { 
+              addr++; 
+              break; 
+            }
+            addr++;
+          }
+          continue; 
+        }
+
+        // 4. ถ้าชื่อตรง → อ่านค่าข้อมูล (ส่วนนี้ใช้ String data ได้เพราะต้องส่งเข้า Result)
+        String data = "";
+        while (addr < eepromSize) {
+          char c = (char)EEPROM.read(addr);
+          if (c == '&') { 
+            addr++; 
+            break; 
+          }
+          data += c;
+          addr++;
+        }
+
+        rawLength = addr - startAddr; // คำนวณความยาวข้อมูลดิบ
+
+        // 5. แปลงค่าตามชนิดที่ระบุไว้ตอนต้น
+        if (ch == '@') {           
+          Vode.type = Result::LONG;
+          Vode.lVal = data.toInt();
+        } else if (ch == '#') {    
+          Vode.type = Result::INT;
+          Vode.iVal = data.toInt();
+        } else if (ch == '$') {    
+          Vode.type = Result::FLOAT;
+          Vode.fVal = data.toFloat();
+        } else if (ch == '%') {    
+          Vode.type = Result::STRING;
+          Vode.sVal = data;
+        }
+
+        return Vode; 
       }
 
-      // ชื่อตรง → อ่านค่าข้อมูล (จนเจอ '&')
-      // Vode = "";
-      String data = "";
-      while (addr < EEPROM.length()) {
-        char c = (char)EEPROM.read(addr);
-        if (c == '&') { addr++; break; }
-        data += c;
-        addr++;
+      rawLength = 0;
+      H1 = -1;
+      return Result(String("-1")); 
+  }
+
+  Result My_eerom::R(char* nane, uint32_t &rawLength) {
+      long addr = 0;
+      char tempName[32]; // บัฟเฟอร์สำหรับพักชื่อที่อ่านจาก EEPROM (ปรับขนาดได้ตามใจชอบ)
+      Result Vode;
+      rawLength = 0;
+
+      int eepromSize = EEPROM.length();
+
+      while (addr < eepromSize) {
+        // 1. หาตัวบ่งชี้ชนิดข้อมูล '@', '#', '$', '%'
+        char ch = (char)EEPROM.read(addr);
+        if (ch != '#' && ch != '@' && ch != '$' && ch != '%') {
+          addr++;
+          continue;
+        }
+        
+        long startAddr = addr;  
+        H1 = addr; // เก็บตำแหน่ง Address ที่พบ
+        addr++; 
+
+        // 2. อ่านชื่อจาก EEPROM มาเก็บใน tempName จนเจอ '&'
+        int idx = 0;
+        while (addr < eepromSize) {
+          char c = (char)EEPROM.read(addr);
+          if (c == '&') { 
+            addr++; 
+            break; 
+          }
+          if (idx < sizeof(tempName) - 1) {
+            tempName[idx++] = c;
+          }
+          addr++;
+        }
+        tempName[idx] = '\0'; // ปิดท้าย string
+
+        // 3. เปรียบเทียบชื่อด้วย strcmp
+        if (strcmp(tempName, nane) != 0) {
+          // ถ้าชื่อไม่ตรง ให้ข้าม (Skip) ค่าข้อมูลไปจนเจอ '&' ตัวที่สอง
+          while (addr < eepromSize) {
+            if ((char)EEPROM.read(addr) == '&') { 
+              addr++; 
+              break; 
+            }
+            addr++;
+          }
+          continue; 
+        }
+
+        // 4. ถ้าชื่อตรง → อ่านค่าข้อมูล (ส่วนนี้ใช้ String data ได้เพราะต้องส่งเข้า Result)
+        String data = "";
+        while (addr < eepromSize) {
+          char c = (char)EEPROM.read(addr);
+          if (c == '&') { 
+            addr++; 
+            break; 
+          }
+          data += c;
+          addr++;
+        }
+
+        rawLength = addr - startAddr; // คำนวณความยาวข้อมูลดิบ
+
+        // 5. แปลงค่าตามชนิดที่ระบุไว้ตอนต้น
+        if (ch == '@') {           
+          Vode.type = Result::LONG;
+          Vode.lVal = data.toInt();
+        } else if (ch == '#') {    
+          Vode.type = Result::INT;
+          Vode.iVal = data.toInt();
+        } else if (ch == '$') {    
+          Vode.type = Result::FLOAT;
+          Vode.fVal = data.toFloat();
+        } else if (ch == '%') {    
+          Vode.type = Result::STRING;
+          Vode.sVal = data;
+        }
+
+        return Vode; 
       }
 
-      // คำนวณความยาวข้อมูลดิบ ตั้งแต่ตำแหน่ง '@', '#', '$', '%' ถึง & ตัวที่สอง
-      rawLength = addr - startAddr;
-
-      // แปลงค่าและเก็บใน Result
-      if (ch == '@') {           // long
-        Vode.type = Result::LONG;
-        Vode.lVal = data.toInt();
-      } else if (ch == '#') {    // int
-        Vode.type = Result::INT;
-        Vode.iVal = data.toInt();
-      } else if (ch == '$') {    // float
-        Vode.type = Result::FLOAT;
-        Vode.fVal = data.toFloat();
-      } else if (ch == '%') {    // string
-        Vode.type = Result::STRING;
-        Vode.sVal = data;
-      }
-
-      return Result(Vode);  // <-- คืนค่า Result แทน String
-    }
-
-    rawLength = 0;
-    H1 = -1;
-    return Result(String("-1")); // <-- คืนค่า Result
+      rawLength = 0;
+      H1 = -1;
+      return Result(String("-1")); 
   }
 
   int My_eerom::H() {
@@ -419,24 +537,26 @@ void outD(const uint8_t pin, const bool value) {
       p.b(Starting_serial, true);
     }
     if(E.GEUP() == 0) { 
-      p.text("No data in EEPROM\n");
+      p.text("\nNo data in EEPROM\n");
       return 0;
     }
     Len_Data = 0;
     p.text("\nStart Data_extraction\n");
-    for(int i = 0; i < EEPROM.length(); i++) {
+    for(uint32_t i = 0; i < EEPROM.length(); i++) {
       if(EEPROM.read(i) != 0xFF) {
         for(int j = 0; j < len_Data_Buffer; j++) {
           Data_EEPROM[j] = ' ';
         }
         Data_EEPROM[len_Data_Buffer - 1] = '\0';
         TData = 0;
+        uint32_t startPos = i;
         while(EEPROM.read(i) != 0xFF) {
           Data_EEPROM[TData] = EEPROM.read(i);
           i++;
           TData++;
         }
-        p.text("Data Buffer : ", Data_EEPROM, "\n");
+        Data_EEPROM[i+1] = '\0'; // ปิดท้าย string
+        p.text("Data Buffer : ", Data_EEPROM, " : Position : ", startPos, " to ", i, "\n");
         Len_Data++;
       }
     }
@@ -444,12 +564,17 @@ void outD(const uint8_t pin, const bool value) {
     return Len_Data;
   }
 
-  uint32_t My_eerom::Search(String name) {
+  int My_eerom::Search(char* name) {
     R(name);
     return H1;
   }
 
-  uint32_t My_eerom::Search(String name, uint32_t &Len_name) {
+  int My_eerom::Search(char* name, int &Len_name) {
+    R(name, Len_name);
+    return H1;
+  }
+
+  int My_eerom::Search(char* name, uint32_t &Len_name) {
     R(name, Len_name);
     return H1;
   }
@@ -465,6 +590,32 @@ void setPinMode(uint8_t pin, uint8_t mode) {
   }
 }
 
+char* inputND() {
+  if(!Use_Serial_True) {
+    p.b(Starting_serial, true);
+  }
+  static char buf[Buffer_Serial_Size];
+  static int Size_buf = sizeof(buf);
+  static size_t idx = 0;
+
+  while (Serial.available() > 0) {
+    char c = Serial.read();
+    
+    if (c == '\r') {
+      continue; // ข้าม Carriage Return
+    }
+    // ถ้าเจอการขึ้นบรรทัดใหม่ (\n) หรือบัฟเฟอร์เต็ม
+    if (c == '\n' || idx >= Size_buf - 1) {
+      buf[idx] = '\0'; // ปิดท้าย String ให้สมบูรณ์
+      idx = 0;         // รีเซ็ตตำแหน่ง idx เป็น 0 เตรียมรับข้อความใหม่ในอนาคต
+      return buf;      // คืนค่า String ที่สมบูรณ์ออกมา
+    }
+    buf[idx++] = c;
+  }
+  
+  return nullptr; 
+}
+
 /* ----------------------------
    Serial Input Helpers Implementation
    ---------------------------- */
@@ -474,19 +625,20 @@ char* input(const char* prompt) {
     p.b(Starting_serial, true);
   }
   // จองบัฟเฟอร์ภายในฟังก์ชัน (ปรับขนาดได้ตามต้องการ)
-  static char buf[64];
+  static char buf[Buffer_Serial_Size];
+  static int Size_buf = Buffer_Serial_Size;
   size_t idx = 0;
-  p.text(prompt," >>> ");
+  Serial.print(prompt);
   while (true) {
     if (Serial.available() > 0) {
       char c = Serial.read();
       if (c == '\r') continue;            // ข้าม CR
-      if (c == '\n' || idx >= sizeof(buf)-1) break;
+      if (c == '\n' || idx >= Size_buf-1) break;
       buf[idx++] = c;
     }
   }
   buf[idx] = '\0';
-  p.text(buf,"\n");
+  p.text(buf,'\n');
   return buf;
 }
 
@@ -495,13 +647,14 @@ char* input() {
     p.b(Starting_serial, true);
   }
   // จองบัฟเฟอร์ภายในฟังก์ชัน (ปรับขนาดได้ตามต้องการ)
-  static char buf[64];
+  static char buf[Buffer_Serial_Size];
+  static int Size_buf = Buffer_Serial_Size;
   size_t idx = 0;
   while (true) {
     if (Serial.available() > 0) {
       char c = Serial.read();
       if (c == '\r') continue;            // ข้าม CR
-      if (c == '\n' || idx >= sizeof(buf)-1) break;
+      if (c == '\n' || idx >= Size_buf-1) break;
       buf[idx++] = c;
     }
   }
@@ -509,6 +662,39 @@ char* input() {
   return buf;
 }
 
-double fx(const char* num) {
-  return te_interp(num, 0);
+const int Size_Buf_Serial() {
+  return Buffer_Serial_Size;
+}
+
+// ฟังก์ชันรับ base pointer, rows, cols, และข้อความ
+void Segmenter(char* base, int rows, int cols, const char* Text) {
+  // ล้าง buffer ทั้งหมด
+  // memset(base, 0, (size_t)rows * (size_t)cols);
+  // เติมช่องว่างเพื่อความชัดเจน
+  for(int i = 0; i < rows; i++) {
+    for(int j = 0; j < cols; j++) {
+      base[i * cols + j] = '\0'; // เติมช่องว่างเพื่อความชัดเจน
+    }
+    base[i * cols + cols - 1] = '\0'; // ปิดท้ายแต่ละแถวด้วย null terminator
+  }
+
+  int word = 0;
+  int ch = 0;
+
+  for (int i = 0; Text[i] != '\0'; ++i) {
+    char c = Text[i];
+    if (c == ' ') {
+      if (ch > 0) {
+        base[word * cols + ch] = '\0'; // ปิดท้ายคำด้วย null terminator
+        ++word;
+        ch = 0;
+      }
+      if (word >= rows) break;
+      continue;
+    }
+    if (ch < cols - 1) { // เว้นที่ให้ '\0'
+      base[word * cols + ch] = c;
+      ++ch;
+    }
+  }
 }

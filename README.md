@@ -10,7 +10,7 @@ It works like a normal library, until it reaches maximum performance dictated by
 
 - miniOS Easier than RTOS and more powerful, compiled by UC
 
-- EasyEEROM Easier is better
+- EasyEEPROM Easier is better
 
 - EasySerial(input,print) As free as a friend
 ## Running Tests
@@ -39,8 +39,8 @@ Writing EEROM will be very easy.
 #include <UOS.h>
 
 void setup() {
-  p.b(115200);           // เริ่ม Serial Monitor
-  //EEPROM.begin(1024);    // เริ่ม EEPROM สำหรับ UNO (1KB)
+  p.b(115200);              // เริ่ม Serial Monitor
+  //EEPROM.begin(1024);     // เริ่ม EEPROM สำหรับ ESP32/8266 (1KB)
 
   p.text("\n--- เริ่มทดสอบ ArduinoUOS ---\n");
 
@@ -100,41 +100,35 @@ void loop() {
 
 | ฟังก์ชัน          | คำอธิบาย                                       | ตัวอย่างการใช้                    |
 | ----------------- | ---------------------------------------------- | --------------------------------- |
-| `E.W(name, data)` | เก็บข้อมูลลง EEPROM แบบบีบอัด                  | `E.W("count", 123);`              |
-| `E.R(name)`       | อ่านตัวแปรที่เก็บไว้ (ไม่เจอคืนค่า -1)         | `int val = E.R("count");`         |
-| `E.R(name, size)` | อ่านตัวแปร พร้อมระบุขนาดข้อมูลจริง             | `E.R("config", 16);`              |
-| `E.clear()`       | ฟอร์แมต EEPROM ให้เข้ากับไลบรารีนี้ (ครั้งแรก) | `E.clear();`                      |
-| `E.D(name)`       | ลบตัวแปรออกจาก EEPROM                          | `E.D("temp");`                    |
-| `E.GEUP()`        | ดูพื้นที่ว่างแบบดิบใน EEPROM                   | `int freeBytes = E.GEUP();`       |
-| `E.GEUP_F()`      | ดูพื้นที่ว่างแบบเปอร์เซ็นต์ใน EEPROM           | `float freePercent = E.GEUP_F();` |
-| `E.H()`           | ดูตำแหน่งบล็อกล่าสุดที่เขียน/อ่านใน EEPROM     | `int lastBlock = E.H();`          |
+| `E.W(name, data)`       | เก็บข้อมูลลง EEPROM แบบบีบอัด                  | `E.W("count", 123);`              |
+| `E.R(name)`             | อ่านตัวแปรที่เก็บไว้ (ไม่เจอคืนค่า -1)         | `int val = E.R("count");`         |
+| `E.R(name, size)`       | อ่านตัวแปร พร้อมระบุขนาดข้อมูลจริง             | `E.R("config", Len_text);`              |
+| `E.clear()`             | ฟอร์แมต EEPROM ให้เข้ากับไลบรารีนี้ (ครั้งแรก) | `E.clear();`                      |
+| `E.D(name)`             | ลบตัวแปรออกจาก EEPROM                          | `E.D("temp");`                    |
+| `E.GEUP()`              | ดูพื้นที่ว่างแบบดิบใน EEPROM                   | `int freeBytes = E.GEUP();`       |
+| `E.GEUP_F()`            | ดูพื้นที่ว่างแบบเปอร์เซ็นต์ใน EEPROM           | `float freePercent = E.GEUP_F();` |
+| `E.H()`                 | ดูตำแหน่งบล็อกล่าสุดที่เขียน/อ่านใน EEPROM     | `int lastBlock = E.H();`          |
+| `E.Search(name)`        | หาข้อมูลใน EEPROM ว่ามีไหม ไม่เจอคืนค่า -1           | `int pos = E.Search("Num1");` |
+| `E.Search(name, size)`  | หาข้อมูลใน EEPROM ว่ามีไหม ไม่เจอคืนค่า -1 และถ้าเจอบอกขนาดข้อมูล     | `int pos = E.Search("Num1", Len_text);` |
 
-## 3. Watchdog
-| ฟังก์ชัน | คำอธิบาย                       | ตัวอย่างการใช้ |
-| -------- | ------------------------------ | -------------- |
-| `wdOn()` | เปิดใช้งาน watchdog (1 วินาที) | `wdOn();`      |
-| `wdR()`  | รีเซ็ต watchdog                | `wdR();`       |
-
-## 4. Pin-Mode Abstraction
+## 3. Pin-Mode Abstraction
 | ฟังก์ชัน             | คำอธิบาย                                            | ตัวอย่างการใช้      |
 | -------------------- | --------------------------------------------------- | ------------------- |
 | `setPinMode(pin, m)` | ตั้งโหมดพิน (m: 1=OUTPUT, 2=INPUT, 3=INPUT\_PULLUP) | `setPinMode(9, 2);` |
 
-## 5. Serial I/O Helpers
-| ฟังก์ชัน      | คำอธิบาย                                             | ตัวอย่างการใช้                       |
-| ------------- | ---------------------------------------------------- | ------------------------------------ |
-| `sIn(prompt)` | แสดง prompt แล้วอ่านบรรทัดจาก Serial (คืนค่า char\*) | `char* input = sIn("Enter name: ");` |
-
-## 6. My_print Class (object: p)
+## 4. My_print Class (object: p)
 | ฟังก์ชัน    | คำอธิบาย                             | ตัวอย่างการใช้             |
 | ----------- | ------------------------------------ | -------------------------- |
 | `p.b(b)`    | เริ่ม Serial ด้วย baud rate b        | `p.b(115200);`             |
+| `p.b(b, Serial_bit)`    | เริ่ม Serial และ ควบคุมการรอ Serial         | `p.b(115200);`             |
 | `p.text(x)` | พิมพ์ข้อความ `x`                     | `p.text("Hello, world");`  |
-| `p()`       | คืนค่า `true` หาก Serial พร้อมใช้งาน | `if(p()) p.text("Ready");` |
+| `p.init()`       | คืนค่า `true` หาก Serial พร้อมใช้งาน | `if(p()) p.text("Ready");` |
 
-## โค้คทดสอบ
+## Test Code
 
 มันมีไม่หมดหรอ ให้ไปอ่านในไฟล์ "Read.text"
+
+Isn't it complete? Go read it in the file 'Read.text'
 ```bash
 #include <UOS.h>
 
@@ -160,15 +154,15 @@ void setup() {
 
   int analogVal = ARead(0); // อ่านค่า analog pin 0
   p.text("Analog read ch0 = ");
-  p.text(String(analogVal).c_str());
+  p.text(analogVal);
   p.text("\n");
 
   unsigned long ms = gml(); // ค่า millis()
   unsigned long us = gmc(); // ค่า micros()
   p.text("Millis: ");
-  p.text(String(ms).c_str());
+  p.text(ms);
   p.text(" Micros: ");
-  p.text(String(us).c_str());
+  p.text(us);
   p.text("\n");
 
   // --- 2. EEPROM Helpers ---
@@ -199,26 +193,10 @@ void setup() {
   p.text(userInput);
   p.text("\n");
 
-  // --- 6. List Management ---
-  p.text("Testing List Management...\n");
-  pClr();
-  pAdd("First message");
-  pAdd("Second message");
-  sClr();
-  sAdd("Auxiliary 1");
-  sAdd("Auxiliary 2");
-  p.text("Lists updated.\n");
-
   // --- 7. My_print class ---
   if(p()) {
     p.text("Serial is ready for printing!\n");
   }
-
-  // --- 8. OLED Fonts (แสดงแค่ชื่อฟอนต์ตัวอย่าง) ---
-  p.text("OLED fonts available:\n");
-  p.text("1) u8g2_font_ncenB08_tr\n");
-  p.text("2) u8g2_font_6x10_tf\n");
-  p.text("... (ดูรายละเอียดในเอกสาร)\n");
 }
 
 void loop() {
